@@ -1,0 +1,255 @@
+---
+title: "Global tradeoffs between prosperity, inequality, and the environment"
+# author: |
+#   | \small \texttt{\href{mailto:juan.rocha@su.se}{\nolinkurl{juan.rocha@su.se}}}
+abstract: |
+  Sustainability is often framed as achieving prosperity, equality, and low environmental impact. But what if there is a trilemma that inhibits the joint achievement of these three key goals? Here we analyzed the synergies and tradeoffs between these goals by investigating historical data on per-capita gross national income (prosperity), the Gini coefficient for income distribution (inequality), and per-capita ecological footprint (environmental impact). We find that no country in the world have successfully solved the trilemma, but there are common typologies that can inform common barriers and strategies to solve it. Some countries are trapped on a high inequality space, while prosperous countries can reduce inequality but typically at expenses of high environmental impacts. Achieving ambitous sustainable goals will require redistribution of wealth and responsibility for the stewardship of the planet.
+  
+output:
+  pdf_document:
+    dev: pdf
+    keep_tex: yes
+    toc: no
+    latex_engine: xelatex
+  rtf_document:
+    toc: no
+csl: /Users/juanrocha/Documents/styles/nature.csl
+bibliography: references_ei.bib
+citecolor: blue
+documentclass: article
+font: Arial
+fontsize: 10pt
+linkcolor: blue
+urlcolor: blue
+header-includes:
+- \usepackage{dcolumn, rotating, longtable, lineno, float, array, tabularx, inputenc}
+- \setmainfont{Arial}
+- \renewcommand{\abstractname}{}
+- \graphicspath{{figures/}}
+- \usepackage[margin=2.5cm]{geometry}
+- \linenumbers
+---
+
+```{r data, include=FALSE}
+library(tidyverse)
+library(here)
+
+```
+
+Targets: 
+
+- NatComms: 5000w | 150w abstract | 4 figs or tables | Methods end 3000w | Refs
+70max
+
+- WorldDev: | 4500-10k words including all (refs, captions, tables, etc) | 300w
+abstract
+
+Current: 3957w
+
+# Introduction
+
+(Aim 1000w | Current 671w)
+
+Sustainability has often been characterised as having three essential, nested dimensions: economy, society, and the environment. More specifically, sustainability has been defined as attaining high material living standards (prosperity), that are also well distributed (equality) and maintainable over the long run (achieved through environmental integrity”) [@Ehrlich:2012; @Sachs:2015; @Tracey:2008]. Although each is undeniably desirable for development, what if all three goals are not simultaneously achievable? It has often been assumed that the ends to which individuals as well as societies aspire inevitably cohere, but *a priori*, there is no reason to believe that diverse goals must be compatible (across scales) or scalable (without upper bounds) [@Gray:2007;
+@Greenspan:2001].
+
+In the literature on development, such macro-level incompatibilities are not novel. For instance, it has been argued that a country cannot achieve globalization, democracy, and sovereignty in a non-volatile combination
+[@RodrikD:2011]. Using resources efficiently, fairly and with maximum freedom has also been proposed as an unattainable triad [@Coyle:2011]. Additionally, researchers suggest that based on international trends, there may be persisting tradeoffs between changes in improving diet, mitigating diseases, and environmental integrity [@Clark:2018]. Another such “trilemma” that countries may face in the Anthropocene is the difficulty - or perhaps impossibility - of being prosperous and equal while achieving or maintaining low environmental impact.
+
+For most of human history, scarcity has been a ubiquitous condition of life: material want, not sufficiency, was the lot of most people [@Maddison:2007;
+@Harari:2014]. Although global prosperity has increased in recent generations, progress has been uneven. If China’s gains in poverty alleviation were removed, the United Nations’ Millennium Development Goal of halving extreme poverty between 1990 and 2015 would not have been achieved [@ki2013millennium]. And even today, approximately 10% of the world’s population still lives under the international poverty line (less than US\$ 1.90 dollars per day), with a much larger share subsisting above that threshold but still aspiring for higher and more secure living standards
+[@TheWor:2018]. In a rise of global poverty unprecedented since the end of World War II, the recent COVID-19 pandemic pushed tens-of-millions of people back beneath that already derisory line, underscoring the economic precarity that still afflicts much of the world.
+
+
+At the same time, while many average incomes for countries in what was once called the “Third World” have progressively converged with those of advanced, mostly Western, economies in recent decades, asymmetries in the domestic distribution of income and wealth have worsened within both developed and developing countries [@Bourguignon:2007; @Milanovic:2016].
+The widespread feelings of injustice that such unequal distribution arouses has historically been called the "Social Question"[@Faist:2009]. Over the past decade, inequality has become an ever-urgent issue for policymakers as well as the general public [@Chancel:2020]. This urgency has been strengthened by a growing body of research demonstrating links between inequality and human wellbeing, health, environmental quality, and economic complexity [@Hamann:2018; @Leach:2018;
+@Pikett:2014; @Wilkinson:2009; @Hartmann:2017].
+
+Environmental conditions form the third, and arguably most fundamental, dimension of the sustainability trilemma. There is now a scientific consensus that human activities have a wide and deleterious impact on the biosphere [@Díaz:2019]. Human activities have become the primary drivers of biodiversity loss, land degradation, and climate change, among other environmental impacts
+[@Díaz:2019]. At the same time, rapid population and economic growth have exceeded a number of the biophysical boundaries that delimit a “safe operating space” for humanity [@Rockström:2009; @RaworthKate:2017]. Global development in the 21st Century requires the protection and restoration of ecosystems as well as the mitigation of catastrophic climate change [@Millenniu:2005; @IPCC:2021].
+
+Although all three goals are necessary, the pursuit of any one may either help or hinder the pursuit of the other two. Recognizing the important nexus formed by economic, social, and environmental challenges, the United Nations’ Sustainable Development Goals explicitly prioritize prosperity, equality, and the environment [@Sachs:2015]. In this study, we ask whether there is evidence – and rationale – that all three goals can be jointly achieved, by a given country and by the world as a whole. In other words, this study attempts to answer the questions: To what extent does the sustainability trilemma exist, and if it does exist, where does it occur and why does it occur there?
+
+# Methods
+
+(Aim 800w | current 972w)
+
+To answer these questions, we examined the historical performance of countries over the past quarter-century using publicly available data on the three dimensions of the sustainability trilemma described above  (Table \ref{tab1}). We chose the country scale due to practical considerations
+of data availability, but also on the recognition that many of the most
+consequential policies affecting sustainability are made and implemented at this level [@Bryan:2018]. We operationalized the trilemma as the movement of countries overtime in the three-dimensional space formed by the axes of prosperity, inequality, and environmental footprint  (Fig \ref{fig:trilemma}). There is a development synergy if a country moves in desired directions towards more than one goal (e.g. reducing inequality and increasing prosperity) There is a development tradeoff if positive movement towards one goal is accompanied by movement in an undesirable direction for another. Therefore, synergies are movements along
+the (blue) diagonal where the achievement of two goals can be positively correlated;
+while tradeoffs are represented by the (red) axis where the achievement of one
+pervades the achievement of another (negative correlations). It is important to note that in this framing, the sign of the correlation changes depending on the term used: i.e., if one speaks of equity as opposed to inequality, or environmental quality as opposed to environmental footprint. In the remainder of this paper we use inequality and environmental footprint because that is how the original data was structured. Therefore, increasing numbers mean less desirable conditions, and negative correlations translate to synergies between the goals of prosperity, equality, and environmental integrity  (Fig \ref{fig:trilemma}).
+
+
+```{=tex}
+\begin{figure*}[ht]
+\centering
+\includegraphics[width = 4in, height = 4in]{conceptual_fig}
+\caption{\textbf{Trilemma space} Countries around the world face the challenge of reducing inequality while increasing prosperity and environmental quality. There could be synergies and trade-offs in achieving these three objectives. We explore trajectory typologies on the trilemma space.}
+\label{fig:trilemma}
+\end{figure*}
+```
+
+To quantify prosperity, equality and environmental impact, we identified a set of widely-used and publicly-available indicators (Table \ref{tab1}). For prosperity, we used
+per-capita gross national income (GNI) in US\$ values.GNI is a cognate measure of gross domestic product (GDP) and the two are close in value for most countries. A key difference is that GNI accounts for earnings from foreign investments. The World Bank uses GNI per capita as its standard measure for the level of development (e.g., low-, medium- or high-income, data source:
+<http://data.worldbank.org>). The threshold for being "prosperous" was   US\$12,746 per capita per year, which is the World Bank’s definition for a high-income country [@TheWor:2018]. 
+
+To measure inequality, we used the Gini coefficient for income. The Gini coefficient is a statistical measure of dispersion and has a long history of being used to measure the level of economic inequality within a country [@Pyatt:1976]. Hypothetically, a country with a Gini value of 0 is absolutely equal, while a value of 1 represents absolute inequality. Gini coefficients of income were taken from the World Income Inequality Database v. 3.4 (source: [https://www.wider.unu.edu/data](https://www.wider.unu.edu/data)). We used 0.30 as the threshold below which countries are identified as having low inequality, similar to findings from a historical survey by Piketty [@Piketty:2014]. 
+
+We used per-capita ecological footprint to measure environmental impact. Ecological footprint is a holistic estimate of the biophysical resources used by human activity, in terms of the land area required for the extraction of materials and energy and the absorption by the environment of pollution and waste [@Wackernagel:1998]. Its unit is the "global hectare", combining measurements of carbon emissions, built-up area, fishing grounds, croplands, forests, and grazing land into an index of environmental impact. In conjunction with measurements of biocapacity – or the extent to which the environment can provide, absorb, and regenerate – the ecological footprint determines whether a given country (or person or city or the world as a whole) is in an unsustainable condition of ecological “deficit”. Though it is not exhaustive, the ecological footprint provides the most widely-used and data-rich approximation of overall human impact on the environment, and it accounts for the effects of trade on resource consumption by country. Ecological footprint and biocapacity data were taken from the Global Footprint Network (source: [https://www.footprintnetwork.org/resources/data/](https://www.footprintnetwork.org/resources/data/)). We used 1.68 global per capita hectares as a threshold for environmental impact, as it reflects the amount of average land needed to satisfy human needs without exceeding the global biocapacity to recover. In other words, it is the limit at which current generations’ needs can be satisfied without compromising the ability of future generations to do so. Ecological footprint estimates above 1.68 global per capita hectares, therefore, represent unsustainable levels of environmental impact.
+
+```{r tab1, echo = FALSE, include = TRUE, results = "asis"}
+dat <- tibble(
+    Dimension = c("Prosperity", "Equality", "Environment"),
+    Indicator = c(
+        "Per-capita gross national income in US$",
+        "Gini coefficient for income",
+        "Per-capita ecological footprint in global hectares"),
+    N = c(232, 196, 211),
+    Threshold = c(12746, 0.3, 1.68)
+)
+
+stargazer::stargazer(
+    dat, type = "latex", 
+    title = "Indicators used in the assessment of national prosperity, equality and environmental impact.",
+    label = "tab1", summary = FALSE, header = FALSE)
+
+# knitr::kable(dat, caption = "Indicators used in the assessment of national prosperity, equality and environmental impact.", label = "tab1")
+```
+
+We used these data to chart the movement of countries across dimensions of prosperity, equality, and environmental integrity over time. We further investigated whether these movements trace out typologies of countries in the trilemma space. To identify different national profiles, we calculated the magnitudes and angles of displacement of countries over time.  We then used average and standard deviation statistics to discover country clusters and performed sensitivity analyses to test the optimal number of clusters to fit. We compared ten clustering algorithms over 30 different metrics of performance, following protocols outlined by refs [@Charrad:2014tp; @Brock:2008vz]. We used principal component analysis as an ordination method for visualization purposes, and vector fitting to show in the principal component space how different features of the trilemma space pull clusters apart. All data used are publicly available, and the code used for the analysis is available at: [https://github.com/juanrocha/trilemma](https://github.com/juanrocha/trilemma).
+
+An analysis of the missing values of the publicly available data shows that a assessing the change over time in the trilemma spaces is only possible for 53 countries. The most incomplete dataset is the inequality data (Figs \ref{fig:SM_gni_missing}, \ref{fig:SM_inq_missing}, \ref{fig:SM_ecofp_missing}), where for any given year at least half of the countries of the world have missing values. Based on the quality of the three datasets, we selected time series from 1995-2017 for countries with $\leqslant 30\%$ of missing values, and inputed them with a linear interpolation. This reduced dataset, although incomplete, enables the study of the dynamics of countries in the trilemmma space (Fig \ref{fig:cube_time}). 
+
+# Results
+
+(Aim 1200w | 610w)
+
+
+```{=tex}
+\begin{figure*}[ht]
+\centering
+\includegraphics[width = 6in, height = 4in]{cube_time}
+\caption{\textbf{Countries trajectories in the trilemma space} 53 trajectories from 1995 to 2017 are depicted for countries with $\leqslant 30\%$ missing values. The trilemma is projected in each of the facets of the tridimensional cube: inequality and ecological footprint (A), inequality and prosperity (B), and ecological footprint and prosperity (C). Thresholds that delimit the objective space are depicted as dotted lines.}
+\label{fig:cube_time}
+\end{figure*}
+```
+
+No country in the data simultaneously achieved high prosperity, low inequality, and high environmental standards. This strongly suggests that globally, there is a sustainability trilemma. At the country level, there were strong tradeoffs between inequality and ecological footprint (Fig \ref{fig:cube_time}A - as the Gini indicator for income decreases, ecological footprint increases) and ecological footprint and prosperity (Fig \ref{fig:cube_time}C- ecological footprint moves in the same direction as per-capita GNI). Additionally, prosperity and inequality (Fig \ref{fig:cube_time}B) were also correlated, with a number of high-income countries (e.g., Sweden, New Zealand) having low levels of inequality in the past, but then showed high variation and a trend toward higher inequality levels in more recent years.
+
+While these globally-aggregated patterns provide insight into international variations with respect to key dimensions of sustainability, they do not necessarily reveal the diversity of individual country trajectories, nor their typology. To further investigate individual trajectories, we calculated the displacement on the trilemma space for each pair-wise dimension, where $\gamma$ is the angle in the inequality and prosperity plane while $\theta$ is the angle in the inequality and ecological footprint plane. These two angles and the total distance covered in the three-dimensional space are used to uncover country typologies.
+
+```{=tex}
+\begin{figure*}[ht]
+\centering
+\includegraphics[width = 6in, height = 4in]{trilema_ensamble}
+\caption{\textbf{Trilemma attractors} }
+\label{fig:cube_ensamble}
+\end{figure*}
+```
+
+There are certain regions of the trilemma space where countries tend to dwell (Fig \ref{fig:cube_ensamble}). The inequality and ecological footprint plane (Fig \ref{fig:cube_ensamble}A), and prosperity and ecological footprint plane (Fig \ref{fig:cube_ensamble}C) have two of these attractors, while the inequality and prosperity plane (Fig \ref{fig:cube_ensamble}B) has three, suggesting the existence of two to three clusters of countries.  Despite this clustering, countries showed distinctive profiles in terms of their direction of movement in the trilemma space (Fig \ref{fig:cube_ensamble} insets). Most countries had low displacement (short arrows), meaning that their trajectory over the study period did not take them far from the region in the trilemma space where they started. A few countries were distinctive in their direction and magnitude of displacement from their starting point in 1995. For example, between 1995 and 2017, China's inequality and ecological footprint worsened while GNI per capita grew significantly. And while in Ukraine inequality and environmental impact actually fell, prosperity only increased marginally. To better understand country typologies, we then clustered summary statistics (mean and standard deviations) of the three trilemma dimensions, as well as the direction and magnitude of country movement over time (Fig \ref{fig:pca}).
+
+The trajectories of countries in the trilemma space from 1995 to 2017 converged into three general types (Fig \ref{fig:pca}). First, there was a group of countries trapped in a region of high inequality, mainly in Latin America. They moved toward regions of higher income inequality with respect to the sample and with a larger standard deviation of $\theta$, that is to say, large variations on the inequality and ecological footprint axes (Fig \ref{fig:pca}A, in green). The second group showed large displacements within the trilemma space but with no definite direction, characterized by particularly high variations in Gini and per-capita GNI (Fig \ref{fig:pca}A, in yellow). The third group was composed of countries with relatively higher prosperity and ecological footprint; their movements in the trilemma space were relatively well defined, with larger values but lower variation in direction ($\gamma$ and $\theta$ angles, Fig \ref{fig:pca}A, blue group). If we ignore temporal dynamics and focus on the mean and standard deviation as summary statistics, we are able to include more countries (N=140). Consequently, this yielded two distinct clusters of countries (Fig \ref{fig:pca}B), with similar tradeoffs between inequality, prosperity, and the environment. The first cluster (Fig \ref{fig:pca}B, in yellow) was composed primarily of advanced Western economies, while the second (Fig \ref{fig:pca}B, in green) was composed of countries from Africa, Latin America, and Asia.
+
+
+```{=tex}
+\begin{figure*}[ht]
+\centering
+\includegraphics[width = 6in, height = 3in]{pca_trilemma}
+\caption{\textbf{Country typologies on the trilemma space} Principal component analysis and a senstivity analysis on clustering routines are used to identify country typologies. 3 clusters are identified when looking at the historical trajectory of countries (N=53) from 1995-2017 (A). 2 clusters are identified when aggregating over time with means and standard deviations on the trilemma dimensions regardless of data completeness. It complements the dynamic analysis with one summary statistic over time for 140 countries (B). }
+\label{fig:pca}
+\end{figure*}
+```
+
+
+# Discussion
+
+(Aim 1000 | 1472)
+
+Our analyses found that inequality and ecological footprint goals pull countries in opposite directions (Fig \ref{fig:pca}) providing strong evidence for the difficulty of achieving both goals at the same time. This suggests the existence of regions within the trilemma space that are hard to escape, characterized by high levels of inequality. The historical data shows that countries typically reduce inequality and then increase ecological footprint, not the other way around (Fig \ref{fig:cube_ensamble}A). Importantly, many middle-income countries have similar levels of inequality as high-income ones, but at lower levels of ecological footprint and per-capita GNI (Fig \ref{fig:cube_ensamble}B, C). This means that countries can achieve low levels of inequality while attaining and preserving high environmental quality. Historical evidence shows that higher prosperity often leads to higher ecological footprints. Nonetheless, it is important to note that past trajectories do not necessarily determine plausible future pathways in the trilemma space.
+
+```{=tex}
+\begin{figure*}[ht]
+\centering
+\includegraphics[width = 6in, height = 1.5in]{maps_trilemma}
+\caption{\textbf{Countries mean performance on trilemma space} Mean values of ecological footprint (A), inequality (B), and gross national income (C). }
+\label{fig:map}
+\end{figure*}
+```
+The potential mechanisms of the tradeoffs and synergies between economic, social, and environmental goals remain open questions. Notably, tradeoffs between inequality and prosperity (e.g., per-capita income) have been extensively studied in relation to the concept of the Kuznets Curve (KC). In this framing, the former increases as the later grows, eventually reaching an inflection point after which growing prosperity leads to lower inequality [@Kuznets:1955]. Since this relationship was first posited in 1955, there has been conflicting evidence, with some country-level studies finding strong correlations and others detecting no clear relationships [@Chancel:2020]. This has made the identification of mechanisms difficult.  Indeed, sustained inequality reduction over the past century seems to have been a consequence of contingent but systemic shocks - the world wars and the Great Depression - rather than through systemic regularities of the global economy or proactive policies by national governments [@Pikett:2014]. In our analysis of the trilemma space, we did not find evidence for a KC-like relationship.
+
+In terms of the economy-environment interface, the Environmental Kuznets Curve (EKC) has often been advanced as an axiomatic relationship and implicit explanation: countries increase their environmental footprints as incomes rise (which in modern history has been driven by industrializatoin and urbanization); but after reaching an inflection point of affluence, the footprints of an increasingly rich society decline (Barbier 1997). As with the original KC, empirical studies of a wide range of environmental variables have come to conflicting conclusions, with some finding international evidence for this inverted-U-shaped relationship and others not (Dasgupta et al. 2002; Stern 2004). In the trilemma space, with the composite indicator of ecological footprint as the environmental indicator, we did not detect an EKC. Various mechanisms have been proposed to explain this relationship or its absence, including market liberalization, more stringent regulations, and greater freedoms for citizens to voice their concerns (Mäler 2013). But what is clear from the wealth of diverse empirical studies is that the connections between prosperity and environmental integrity are mediated or confounded by other, largely social, factors. 
+
+Other mechanisms and pathways that do not posit linear or quadratic relationships have been identified as driving dynamics between economic, social and environmental dimensions. For instance, countries with high per-capita biocapacity tended to spare more land for nature, forming a virtuous cycle of improving environmental conditions [@Weinzett:2013]. Similarly, population, environmental carrying capacity, and pollution exhibit mutually-reinforcing feedbacks across countries [@LaTorr:2019]. These types of feedbacks can create and maintain "red loop" or "green loop" dynamics at the national level, entrapping some states in long-term conditions of environmental degradation while placing others on a more sustainable trajectory [@Cumming:2014; @Cumming:2018; @Hamann:2015].
+
+Additionally, structural forces in the global economy are creating, or at least exacerbating, a skewed international distribution of sustainability-related development burdens. Environmental impacts can be “outsourced”, as is common with affluent countries that have shifted resource-intensive production to developing countries through global supply chains [@Lambin:2011] - an important factor not captured in most EKC analyses (Mäler 2013). For instance, the US and a number of European countries have outsourced a significant portion of their carbon emissions, land use, and environmental impacts to lower-income economies through trade [@Nijdam:2005; @Peters:2006; @Weinzett:2013]. Additionally, it has been shown that international trade has significantly influenced global land use patterns, worsening natural resource exploitation and biodiversity loss [@Creutzig:2019]. Thus telecoupling and resource consumption from far away places is a mechanism that can maintain countries in undesirable regions of the trilemma space.
+
+While no country was found to have eluded the sustainability trilemma, there were states, forming clusters, in which tradeoffs and synergies between economic, social and environmental goals moved in distinctively different directions. These dynamics further highlight the inadequacy of reductionistic, often mono-causal, explanations - such as those found in many KC and EKC studies - and the need to incorporate historical, geographic, and structural factors.  For instance, in Ukraine, the existence of (relatively) low inequality and environmental footprint alongside low prosperity seemed to conform to the KC and EKC relationships. However, inequality levels in the Philippines, which had a similar average income, and Mexico, which had a similar per-capita ecological footprint, were extremely high. Additionally, Ukraine’s trajectory through the trilemma space was far from smooth: over the study period, average incomes rose and fell in dramatic downswings due to corruption (endemic and structural across post-Soviet Union countries) and war, among other historical factors. 
+
+The clustering of countries in the trilemma space also shows the importance of geographic factors, especially territorial features and natural resource endowments, to sustainable development.  Countries that performed relatively well along all three dimensions tended to be advanced Western economies, particularly along the North Atlantic rim (e.g., Canada, Sweden) and in the Antipodes (i.e., New Zealand and Australia). These countries, in addition to benefiting from the legacies of early industrialization and imperialism, also had a much higher ratio of space and resources to people, as reflected for instance in per-capita biocapacity. Finally, the structure of the global economy is also a powerful factor in explaining international differences in the trilemma space. China, the rapid rise of both prosperity, inequality, and environmental footprint were significantly driven by its integration into international networks of commerce and finance (most notably its accession to the World Trade Organization in 2002). Rapid economic growth was driven by the emergence of a resource-intensive manufacturing sector - with China becoming the so-called “factory of the world”. At the same time, studies show that the surge of economic inequality in China was due in large part to geographic differences: coastal areas were the manufacturing base and export hubs, with high-value added contributions, while the inland areas supplied mostly raw materials, intermediate goods, and cheap labour.
+
+Although we believe our analysis of the sustainability trilemma identified important patterns and drivers of international development (as well as lacunae in the existing literature), it still faced limitations of data and method. First, the offshoring of environmental degradation discussed above is also not completely captured in standard ecological footprint measurements [@VandenBergh:2012].  A bottom-up or consumption-based approach to measuring environmental impacts – as opposed to the more mainstream top-down or production-based approach – may help internalize these externalities (e.g., resource-intensive goods produced in China are consumed in the US, but the environmental footprint of that production is in the former). But such an approach is constrained by the lack of relevant data (the existing literature on this topic has more narrowly focused specific commodities, on bilateral or regional trade). If these outsourced environmental impacts were incorporated into the appropriate indicators, our findings would likely show that affluent countries have been even less successful at reducing environmental footprints. This phenomenon has important implications for the international distribution of ethical burdens, especially since climate change impacts, pandemic risks, and other global environmental problems will disproportionally affect lower-income countries, which tend to have lower adaptive capacity compared to affluent states [@Fankhauser:2014; @Mendelsohn:2006; @IPCC:2021].
+
+A representative indicator-based approach to assessing sustainability at the national level has been used in other studies, yielding instructive lessons for research and policy [@Holden:2014; @Moran:2008; @Pulsell:2015]. However, we recognize that there are other valid ways to conceptualize sustainability. Modern studies on the relationship between ecological limits, human population, and the economy have a long pedigree [@Ehrlich:1971; @Meadows:1972].  More recently, an influential work by Raworth [-@RaworthKate:2017] postulated 11 "social thresholds" and 7 planetary boundaries to delimit sustainability. This and similar frameworks imply equal weight among chosen thresholds, which mix more subjective indicators (e.g., life satisfaction and democratic quality) with objective measures of wellbeing (e.g., nutrition and healthy life expectancy). Such diverse classification schemes are instructive but may also be over determined: it is conceivable that a different and even longer list of thresholds could be advanced to form an equally relevant sustainability framework. While our three canonical dimensions framework is also imperfect (or perhaps just coarse-grained), its conceptual parsimony accords with long-standing definitions of sustainability.
+
+
+# Conclusions
+
+Aim (500w | 211w )
+
+Countries around the world are facing a trilemma when it comes to achieving economic prosperity, social equality while reducing environmental impact. While the political strategies to navigate the trilemma space will be context and path dependent, our analysis shows that there are common typologies of how the trilemma has historically evolved. These typologies might help identify groups of countries where common strategies to face the trilemma could work beyond context dependence, bearing in mind that there are no blue print solutions (Ostrom). Whether the patterns of synergies and tradeoffs here identified hold across scales, e.g. looking at finer subnational scales or other units of analysis such as cities or businesses, remains an open question. Most importantly, the causal mechanisms explaining the synergies and tradeoffs between inequality, economic prosperity and the environment are likely to be diverse, rather than single relationships. The foundational role of nature and support system of biodiversity cannot be understated when thinking about sustainable development goals. A myopic focus on prosperity is clearly misplaced. Highly prosperous countries do not necessarily have lower levels of inequality, but almost always have higher environmental footrpints. A myopic focus on economic prosperity actually undermines progress towards sustainable development, and the noble ambitions of the international agenda of leaving no one behind.
+
+
+# Acknowledgements
+
+We would like to thank the conveners and other participants of the Beijer Young Scholars workshops (2016-2018) for their insightful comments and advice as well as the Beijer Institute of Ecological Economics, at the Royal Swedish Academy of Sciences, for its institutional support.  This work was also supported by funding from Formas (grant number 2018-02318).
+
+# References {.unnumbered}
+
+::: {#refs}
+:::
+
+\pagebreak
+
+
+
+# Supplementary Material {#sec:SM}
+
+
+```{=tex}
+\renewcommand\thefigure{S\arabic{figure}}
+\renewcommand\thetable{S\arabic{table}}
+\setcounter{table}{0}
+\setcounter{figure}{0}
+```
+
+
+```{=tex}
+\begin{figure*}[ht]
+\centering
+\includegraphics[width = 6in, height = 6in]{prosperity_missing_values}
+\caption{\textbf{Data quality for prosperity} Different prosperity metrics are compared with respect to their coverage in space (countries) and time (A). Gross national income (GNI) is the metric with higher completion rate (B), with an arbitrary threshold of 30\% missing values, the analysis could include over 100 coutries (C).}
+\label{fig:SM_gni_missing}
+\end{figure*}
+```
+
+```{=tex}
+\begin{figure*}[ht]
+\centering
+\includegraphics[width = 6in, height = 6in]{inq_missing_values}
+\caption{\textbf{Data quality for inequality} Mean Gini income is the most complete statistic of inequality with respect to their coverage in space (countries) and time (A). Alternative metrics such as the Palma index overcome some of the limitations of Gini but have disproportionally more missing values (B). For Gini, the proportion of countries with missing values is above 50\% for any given year. An arbitrary treshold of 30\% threshold for includsion will leave countries like South Africa (country with highers inequality in the world) out of the analysis (D).}
+\label{fig:SM_inq_missing}
+\end{figure*}
+```
+
+
+```{=tex}
+\begin{figure*}[ht]
+\centering
+\includegraphics[width = 6in, height = 6in]{ecofp_missing_values}
+\caption{\textbf{Data quality for ecological footprint} Coverage of the ecological footprint in space (countries) and time (A) shows that data is relatively complete after mid 1990s (B) An arbitrary threshold of 10 missing values would leave some of the small islands states out of the analysis (C).}
+\label{fig:SM_ecofp_missing}
+\end{figure*}
+```

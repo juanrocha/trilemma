@@ -8,3 +8,8 @@
 *.html
 *.csv
 *.RData
+*.rtf
+*.tex
+*.bib
+.DS_Store
+*.xml
