@@ -1,5 +1,5 @@
 ---
-title: "Global tradeoffs between prosperity, inequality, and the environment"
+title: "Triple bottom line or trilemma? Global tradeoffs between prosperity, inequality, and the environment"
 author: |
     | \small Tong Wu^1,§^, Juan C. Rocha^2,3,§^, Kevin Berry^4^, Tomas Chaigneau^5^,  Maike Hamann^6,7^, Emilie Lindkvist^2^, Jiangxiao Qiu^8^, 
     | \small Caroline Schill^2,9^, Alon Shepon^10^, Anne-Sophie Crépin^9^, and Carl Folke^2,9^

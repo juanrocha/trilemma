@@ -1,0 +1,898 @@
+---
+title: "Trilemma"
+author: "Juan Rocha"
+date: "Updated `r Sys.Date()`"
+output:
+  html_notebook: 
+    toc: yes
+    toc_float: yes
+    highlight: tango
+    code_folding: hide
+    df_print: paged
+editor_options: 
+  chunk_output_type: inline
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  cache = TRUE, warning = FALSE, message = FALSE, echo = TRUE,
+  fig.width = 8, fig.height = 5
+)
+
+
+library(tidyverse)
+library(naniar)
+library(plotly)
+library(patchwork)
+
+# time series
+library(tsibble)
+library(fable)
+library(imputeTS)
+library(slider)
+
+# # clustering
+# library(vegan)
+# library(NbClust)
+# library(clValid)
+# library(mclust)
+# library(ggbiplot)
+
+#theme_set(theme_light(base_size = 12))
+```
+
+
+## Data
+
+
+```{r}
+ecofp <- list()
+fls <- list.files("data/ecofootprint/")
+ecofp <- purrr::map(fls, function(x) {
+    jsonlite::read_json(
+        path = paste0("data/ecofootprint/", x),
+        simplifyVector = TRUE)
+    }) %>% 
+    bind_rows()
+
+ecofp
+```
+
+```{r}
+inq <- readxl::read_xlsx(
+    path = "~/Documents/Projects/DATA/WIID_World_Income_Inequality_DB/WIID_06MAY2020.xlsx")
+inq
+```
+
+
+```{r}
+dat1 <- read_csv(
+    "~/Documents/Projects/DATA/WorldBank/SDG_csv/SDGData.csv") %>% 
+    janitor::clean_names()
+
+missingness <- dat1 %>% 
+    select(-last_col()) %>% 
+    filter(str_detect(indicator_name, "GNI")) %>% 
+    pivot_longer(cols = x1990:x2019, names_to = "year", values_to = "value") %>% 
+    mutate(year = str_remove(year, "x")) %>% 
+    mutate(year = as.numeric(year)) %>% 
+    mutate(ismissing = is.na(value)) %>% 
+    group_by(country_code, indicator_name, country_name) %>% 
+    summarize(missingness = sum(ismissing)/n())
+
+missingness%>% 
+    ggplot(aes(country_code, indicator_name)) +
+    geom_tile(aes(fill = missingness)) + 
+    scale_fill_viridis_c(option = "C") +
+    theme(axis.text.x = element_text(angle =90), legend.position = "top")
+```
+
+## Analysis
+
+The bottle neck is certaintly our proxies of inequality, no matter what we use. Based on the missing data explorations, inequality data improves from 1995 onward.
+
+```{r}
+## there are different country name spellings, so work only with iso codes and recover names later if you need them.
+countries <- read_csv(
+    file = "~/Documents/Projects/DATA/WorldBank/SDG_csv/SDGCountry.csv") |> 
+    janitor::clean_names()
+
+dat <- ecofp %>%
+  filter(record == "EFConsPerCap") %>%
+  select(countryName, isoa2, year, value) %>% 
+  rename(EFconsPerCap = value, country = countryName) %>% 
+    filter(!is.na(isoa2)) |> 
+  filter(year >= 1995)
+
+## correct Sudan:
+dat$isoa2[dat$country == "Sudan (former)"] <- "SD"
+## get rid of country names
+dat <- dat |> select(-country)
+
+## add iso3 code
+dat <- dat |> 
+    left_join(countries |> select(iso3 = country_code, isoa2 = x2_alpha_code))
+
+dat$iso3[dat$isoa2 == "NA"] <- "NAM" # correct Namibia
+
+dat <- dat %>% 
+  left_join(
+    .,
+    inq %>% 
+      filter(!is.na(gini_reported), year >= 1995) %>% 
+      select(country, isoa2 = c2, iso3 = c3, year, gini_reported) %>% 
+      group_by(country, year, isoa2, iso3) %>% 
+      summarize(gini_mean = mean(gini_reported, na.rm = TRUE)) |> 
+        ungroup() |> select(-country) # remove country names
+      
+  )
+
+dat <- dat %>% 
+  left_join(
+    ., 
+    dat1 %>% 
+      select(-last_col()) %>% 
+      filter(indicator_name == "GNI per capita (US$)") %>% 
+      pivot_longer(cols = x1990:x2019, names_to = "year", values_to = "value") %>%
+      mutate(year = str_remove(year, "x")) %>% 
+      mutate(year = as.numeric(year)) %>% 
+      mutate(ismissing = is.na(value)) %>% 
+      filter(year >= 1995) %>% 
+      rename(country = country_name, gni = value, iso3 = country_code) |> 
+        ungroup() |> select(-country)
+  )
+
+dat
+
+```
+
+Compute missing values for inequality:
+```{r}
+missingness <- dat %>% 
+    mutate(ismissing = is.na(gini_mean)) %>% 
+    group_by(iso3) %>% 
+    summarize(missingness = sum(ismissing)/n()) %>% 
+    arrange(missingness)
+
+
+key_countries <- missingness %>% 
+    filter(missingness <= 0.3) %>% 
+    pull(iso3)
+
+droped_countries <- missingness %>% 
+    filter(missingness > 0.3) %>% 
+    pull(iso3)
+```
+
+```{r}
+#library(tsibbledata)
+df_dat <- dat %>% 
+    select(-starts_with("indicator")) %>% 
+    filter(iso3 %in% key_countries) %>% 
+    as_tsibble(key = iso3, index = year) 
+    
+df_dat <- df_dat %>% 
+    fill_gaps(.full = TRUE)
+
+```
+
+```{r}
+
+df_dat <- df_dat %>% 
+    group_by(iso3) %>% 
+    mutate(
+        gini = na_interpolation(gini_mean),
+        gni2 = na_interpolation(gni),
+        EFconsPerCap = na_interpolation(EFconsPerCap)
+    ) 
+```
+
+
+
+```{r message=FALSE, warning=FALSE}
+p <- df_dat %>% 
+    select(year, `Ecological footprint` = EFconsPerCap, GNI = gni2, Gini = gini) %>% 
+    GGally::ggpairs(
+        columns = 3:5 ,
+    lower = list(continuous = GGally::wrap("points", alpha = 0.5, size = 0.5)),
+    diag = list(continuous = GGally::wrap("densityDiag", alpha = 0.2))
+    # upper = list(continuous = GGally::wrap("cor", size = 2))
+    ) + theme_light(base_size = 6)
+
+# ggsave(
+#     plot = p,
+#     file = "correlogram.png", path = "figures/", device = "png",
+#     width = 4, height = 4, dpi = 300, bg = "white"
+# )
+p + theme_light(base_size = 20)
+```
+
+
+```{r}
+df_dat <- df_dat %>% 
+    select(EFconsPerCap, gini, gni2) %>% 
+    filter(!is.na(gni2))   # lost 2 more countries due to NAs
+    
+```
+
+Use this graph for trajectories of all countries later
+
+```{r}
+df_dat %>% 
+    pivot_longer(cols = c("EFconsPerCap", "gini", "gni2"),
+                 names_to = "variable", values_to = "value") %>% 
+    ggplot(aes(year, value)) +
+    geom_line(aes(group = iso3)) +
+    facet_wrap(~variable, ncol = 1, scales = "free") +
+    theme_light(base_size = 15)
+```
+
+```{r}
+p1 <- df_dat %>% 
+    ggplot(aes(EFconsPerCap, gini, group = iso3)) +
+    geom_point(size = 0.5, aes(color = year)) +
+    geom_path(size = 0.2, aes(color = year)) +
+    annotate(geom = "rect", xmin = 0, xmax = 1.68, ymin = 20, ymax = 30,
+             fill = "skyblue", alpha = 0.2) +
+    annotate(geom ="rect",xmin = 0, xmax = 1.68, ymin = 30, ymax = 62,
+             fill = "orange", alpha = 0.2) +
+    annotate(geom ="rect", xmin = 1.68, xmax = 18, ymin = 20, ymax = 30,
+             fill = "orange", alpha = 0.2) +
+    annotate(geom="rect", xmin = 1.68, xmax = 18, ymin = 30, ymax = 62,
+             fill = "red", alpha = 0.2) +
+    geom_hline(yintercept = 30, linetype = 2, color = "gray50") +
+    geom_vline(xintercept = 1.68, linetype = 2, color = "gray50") +
+    scico::scale_color_scico("Year", palette = "bilbao") +
+    labs(y = "Gini", x = "Ecological footprint", tag = "A") + theme_light() +
+    theme(legend.position = "top", panel.grid = element_blank(),
+          legend.key.width = unit(10, "mm"), legend.key.height = unit(3,"mm"))
+
+p2<- df_dat %>% 
+  ggplot(aes(gni2, gini, group = iso3)) +
+  geom_point(size = 0.5, show.legend = FALSE, aes(color = year)) +
+  geom_path(size = 0.2, aes(color = year)) +
+    annotate(geom = "rect", xmin = 10, xmax = 12746, ymin = 20, ymax = 30,
+             fill = "orange", alpha = 0.2) +
+    annotate(geom ="rect",xmin = 10, xmax = 12746, ymin = 30, ymax = 62,
+             fill = "red", alpha = 0.2) +
+    annotate(geom ="rect", xmin = 12746, xmax = 105000, ymin = 20, ymax = 30,
+             fill = "skyblue", alpha = 0.2) +
+    annotate(geom="rect", xmin = 12746, xmax = 105000, ymin = 30, ymax = 62,
+             fill = "orange", alpha = 0.2) +
+    geom_hline(yintercept = 30, linetype = 2, color = "gray50") +
+    geom_vline(xintercept = 12746, linetype = 2, color = "gray50") +
+    scico::scale_color_scico("Year", palette = "bilbao") +
+      scale_x_log10() +
+    labs(y = "Gini", x = "GNI [log]", tag = "B") + theme_light() +
+    theme(legend.position = "top", panel.grid = element_blank(),
+          legend.key.width = unit(10, "mm"), legend.key.height = unit(3,"mm"))
+
+
+p3<- df_dat %>% 
+  ggplot(aes(gni2, EFconsPerCap, group = iso3)) +
+  geom_point(size = 0.5, show.legend = FALSE, aes(color = year)) +
+  geom_path(size = 0.2, aes(color = year))+
+    annotate(geom = "rect", xmin = 10, xmax = 12746, ymin = 0, ymax = 1.68,
+             fill = "orange", alpha = 0.2) +
+    annotate(geom ="rect",xmin = 10, xmax = 12746, ymin = 1.68, ymax = 18,
+             fill = "red", alpha = 0.2) +
+    annotate(geom ="rect", xmin = 12746, xmax = 105000, ymin = 0, ymax = 1.68,
+             fill = "skyblue", alpha = 0.2) +
+    annotate(geom="rect", xmin = 12746, xmax = 105000, ymin = 1.68, ymax = 18,
+             fill = "orange", alpha = 0.2) +
+    geom_hline(yintercept = 1.68, linetype = 2, color = "gray50") +
+    geom_vline(xintercept = 12746, linetype = 2, color = "gray50") +
+    scico::scale_color_scico("Year", palette = "bilbao") +
+      scale_x_log10() +
+    labs(y = "Ecological footprint", x = "GNI [log]", tag = "C") + theme_light() +
+    theme(legend.position = "top", panel.grid = element_blank(),
+          legend.key.width = unit(10, "mm"), legend.key.height = unit(3,"mm"))
+
+# ggsave(
+#     plot = p1 + p2 + p3 + plot_layout(guides = "collect") & 
+#         theme_light(base_size = 7) & 
+#         theme(legend.position = "bottom", panel.grid = element_blank(),
+#           legend.key.width = unit(10, "mm"), legend.key.height = unit(3,"mm")),
+#     path = "figures/", file = "cube_time.png", device = "png", dpi = 300,
+#     width = 7, height = 3, bg = "white"
+# )
+
+p1 + p2 + p3 + 
+    plot_layout(guides = "collect") & theme_light(base_size = 12) & 
+    theme(legend.position = "bottom", panel.grid = element_blank(),
+          legend.key.width = unit(20, "mm"), legend.key.height = unit(3,"mm"))
+```
+
+```{r}
+df_dat %>% 
+    as_tibble() %>% 
+    group_by(iso3) %>% 
+    summarize(
+        mean_ef = mean(EFconsPerCap),
+        mean_gni = mean(gni2),
+        mean_gini = mean(gini),
+        var_ef = var(EFconsPerCap),
+        var_gni = var(gni2),
+        var_gini = var(gini)
+    ) %>% 
+    arrange(desc(mean_ef))
+```
+### Experimenting with phase plane
+
+```{r}
+df_dat <- df_dat |> 
+    # change scale of GNI to log so the magnitud is not so dominated by $
+    mutate(gni_log = log(gni2)) |> 
+    mutate(
+        d_EF = slide_dbl(EFconsPerCap, diff, .before = 1, .after = 0, .complete = TRUE),
+        d_gini = slide_dbl(gini, diff, .before = 1, .after = 0, .complete = TRUE),
+        d_gni = slide_dbl(gni_log, diff, .before = 1, .after = 0, .complete = TRUE)
+    ) |> 
+    mutate(
+        magni = sqrt(d_EF^2 + d_gini^2 + d_gni^2), 
+        theta = atan(d_gini/d_EF),
+        gamma = atan(d_gini/d_gni)
+    ) 
+```
+
+```{r}
+df_dat |> 
+    as_tibble() |> 
+    ungroup() |> 
+    group_by(iso3) |> 
+    summarize(mgt = sum(magni, na.rm = TRUE), 
+              theta = sum(theta, na.rm = TRUE),
+              gamma = sum(gamma, na.rm = TRUE)) |> 
+    arrange(desc(mgt))
+```
+```{r fig.width=6, fig.height=3}
+p <- df_dat |> 
+    as_tibble() |> 
+    select(iso3, year, d_EF, d_gini, d_gni) |> 
+    pivot_longer(cols = starts_with("d_"), names_to = "vars", values_to = "vals") |> 
+    filter(!is.na(vals)) |> 
+    mutate(vars = case_when(
+        vars == "d_EF" ~ "Ecological Footprint",
+        vars == "d_gni" ~ "GNI [log]",
+        vars == "d_gini" ~ "Gini"
+    )) |> 
+    ggplot(aes(year, vals, group = iso3)) +
+    geom_path(size = 0.2, alpha = 0.5) +
+    facet_wrap(~vars, scales = "free") +
+    labs(x = "Year", y = "First difference") +
+    theme_light(base_size = 7)
+
+# ggsave(
+#     plot = p, path = "figures/", file = "first_diff.png", device = "png",
+#     width = 6, height = 3, dpi = 300, bg = "white")
+p + theme_light(base_size = 20)
+```
+```{r fig.width=3, fig.height=3}
+c1 <- df_dat |> 
+    ggplot(aes(EFconsPerCap, gini)) +
+    geom_hline(yintercept = 30, linetype = 2, color = "gray50") +
+    geom_vline(xintercept = 1.68, linetype = 2, color = "gray50") +
+    geom_density2d(size = 0.25, color = "#446B9C") +
+    geom_point(aes(color = gni_log), size = 0.5) +
+    geom_path(aes(group = iso3), size = 0.1) +
+    scico::scale_color_scico("Prosperity (GNI [log])") +
+    labs(y = "Inequality (Gini)", x = "Ecological footprint") +
+    theme_light(base_size = 6) +
+    theme(legend.position = "top", panel.grid = element_blank(),
+          legend.key.width = unit(7, "mm"), legend.key.height = unit(2,"mm"))
+
+c1 
+```
+```{r fig.width=3, fig.height=3}
+c2 <- df_dat |> 
+    ggplot(aes(gni2, gini)) +
+    geom_density2d(size = 0.25, color = "#446B9C") +
+    geom_point(aes(color = EFconsPerCap), size = 0.5) +
+    geom_path(aes(group = iso3), size = 0.1) +
+    geom_hline(yintercept = 30, linetype = 2, color = "gray50") +
+    geom_vline(xintercept = (12546), linetype = 2, color = "gray50") +
+    scico::scale_color_scico("Ecological footprint",palette = "berlin") +
+    labs(x= "Prosperity (GNI [log])", y = "Inequality (Gini)") +
+    scale_x_log10() +
+    theme_light(base_size = 6) +
+    theme(legend.position = "top", panel.grid = element_blank(),
+          legend.key.width = unit(7, "mm"), legend.key.height = unit(3,"mm"))
+
+c2 + theme_light(base_size = 7)
+```
+```{r fig.width=3, fig.height=3}
+c3 <- df_dat |> 
+    ggplot(aes(gni2, EFconsPerCap)) +
+    geom_density2d(size = 0.25, color = "#446B9C") +
+    geom_point(aes(color = gini), size =0.5) +
+    geom_path(aes(group = iso3), size = 0.1) +
+    scico::scale_color_scico("Inequality (Gini)") +
+    labs(x = "Prosperity (GNI)", y = "Ecological footprint") +
+    scale_x_log10()+
+    geom_hline(yintercept = 1.68, linetype = 2, color = "gray50") +
+    geom_vline(xintercept = (12546), linetype = 2, color = "gray50") +
+    theme_light(base_size = 6) +
+    theme(legend.position = "top", panel.grid = element_blank(),
+          legend.key.width = unit(7, "mm"), legend.key.height = unit(3,"mm"))
+
+c3 
+```
+Who is the weird trajectory out there, world? No it's Luxemburg
+
+```{r}
+df_dat |> 
+    arrange(desc(EFconsPerCap))
+
+# save(df_dat, file = "data/cleaned_trilemma-20230614.RData")
+```
+
+
+
+## Clustering
+
+I'm not sure if the clustering requires one column per variable * year. Since really the unit of observation is country. Need to read upon it.
+
+```{r fig.width=6, fig.height=4}
+df_summary <- df_dat |> 
+    as_tibble() |> 
+    ungroup() |> 
+    group_by(iso3) |> 
+    dplyr::summarize(sd_magnitude = sd(magni, na.rm = TRUE),
+              sd_theta = sd(theta, na.rm = TRUE),
+              sd_gamma = sd(gamma, na.rm = TRUE), 
+              EF = mean(EFconsPerCap, na.rm = TRUE),
+              Gini = mean(gini, na.rm = TRUE),
+              GNI = mean(gni_log, na.rm = TRUE),
+              sd_EF = sd(EFconsPerCap, na.rm = TRUE),
+              sd_Gini = sd(gini, na.rm = TRUE),
+              sd_GNI = sd(gni_log, na.rm = TRUE),
+              #magnitude_m = mean(magni, na.rm = TRUE),
+              #theta_m = mean(theta, na.rm = TRUE),
+              #gamma_m = mean(gamma, na.rm = TRUE),
+              magnitude = sum(magni, na.rm = TRUE),
+              theta = sum(theta, na.rm = TRUE),
+              gamma = sum(gamma, na.rm = TRUE)
+              ) 
+
+
+m <- "ward.D2" # minimize the total within-cluster variance
+
+clust_num <- NbClust::NbClust( 
+    data = (df_summary %>% as.data.frame() %>% 
+        select(where(is.numeric)) ),
+    #distance = "maximum",
+    min.nc = 2, max.nc = 7, 
+    method = m, 
+    index = 'all')
+```
+
+The Hubert index (which is graphical) favours 4 groups while D index favours 3 groups. Thus in total 9 metrics proposed 2 groups, 9 metrics proposed 3 groups, and all other options are minorities. Let's continue the analysis with 3 to favour diversity.
+
+```{r warning = FALSE, message=FALSE}
+
+library(clValid)
+library(mclust)
+## Stability & Internal validation
+stab <- clValid::clValid(
+    obj = df_summary %>% as.data.frame() %>% 
+        select(where(is.numeric)) %>%
+        as.matrix(),
+    nClust = 2:9,
+    clMethods = c(
+        "hierarchical", "kmeans",  "som", 
+        "model", "diana", "sota", "pam", "clara", "agnes"),
+    validation = c('stability', "internal"),
+    #metric = "manhattan",
+    method = "ward",
+    verbose = FALSE
+) ## Hierarchical is the optimal method
+
+clValid::optimalScores(stab)
+```
+The stability analysis also supports the choice of either 2 or 7 clusters. Partition around medioids does perform well with 9 clusters, but others are supporting the 2 clusters.
+
+
+```{r}
+# stab@clusterObjs$pam$`2`$clustering
+
+stab@clusterObjs$kmeans$`3`$cluster
+
+stab@clusterObjs$diana |> plot()
+```
+
+```{r fig.width=7, fig.height=8}
+df_summary |> 
+    mutate(clus = stab@clusterObjs$kmeans$`3`$cluster ) |> 
+    mutate(iso3 = as_factor(iso3)) |> 
+    mutate(iso3 = fct_reorder2(iso3, magnitude, Gini)) |> 
+    pivot_longer(
+        cols = sd_magnitude:gamma, names_to = "vars", 
+        values_to = "vals") |> 
+    ggplot(aes(vals, iso3)) +
+    geom_col(aes(fill = as.factor(clus))) +
+    facet_grid(clus~vars, scales = "free") +
+    theme_light(base_size = 10)
+```
+
+```{r message = FALSE, warning = FALSE, fig.width=5, fig.height=5}
+df_summary |>
+    select(-starts_with("iso3")) |> 
+    GGally::ggpairs()
+```
+
+```{r fig.width=3, fig.height=3}
+pc <- prcomp(df_summary |> 
+                 select(-starts_with("iso3")),
+             center = TRUE, scale. = TRUE)
+## Fix short names for plotting
+# df_summary <- df_summary |> 
+#     left_join(
+#         dat |> select(country, country_code) |> 
+#             filter(!is.na(country_code)) |> unique())
+
+pc1 <- ggbiplot::ggbiplot(
+    pc, groups = as.character(stab@clusterObjs$kmeans$`3`$cluster),
+    ellipse = TRUE, labels = df_summary$iso3, labels.size = 1,
+    varname.size = 1.5) +
+    scale_color_manual("Groups", values = c("#73B3A3","#FEA621","#5BA4CA")) +
+    labs(tag = "A") +
+    theme_light(base_size = 5) +
+    theme(legend.position = c(0.2, 0.2), panel.grid = element_blank(),
+          legend.text = element_text(size = 5), legend.title = element_text(size = 5),
+          legend.key.width = unit(3,"mm"), legend.key.height = unit(2, "mm"))
+
+pc1
+
+# ggsave(
+#     filename = "pca_trilema.png", path = "figures/", device = "png",
+#     width = 3, height = 3, dpi = 300, bg = "white",
+#     plot = pc1
+# )
+
+```
+
+Note to self: It does not make sense to plot the average distance traversed in the space per country. Take Luxemburg as example, it started and ended very close by. The absolute distance is what I'm calculating with the euclidian distance on that plane, then the first-diff values are just increases or decreases with respect to initial conditions. Averages are then misleading, because on average Luxembourg moved a lot (in circles). 
+
+Averages are worth calculating for the parameter space, the vector field of the cube. But not for individual countries, or particules moving within the cube. Be aware of that when presenting and interpreting the results. 
+
+
+```{r fig.height=3,fig.width=3}
+a1 <- df_dat |> 
+    as_tibble() |> 
+    group_by(iso3) |> 
+    dplyr::summarize(
+        EF = sum(d_EF, na.rm = TRUE),
+        Gini = sum(d_gini, na.rm = TRUE),
+        GNI = sum(d_gni, na.rm = TRUE)
+    ) |> 
+    mutate(Group = as.character(stab@clusterObjs$kmeans$`3`$cluster)) |> 
+    # left_join(
+    #     dat |> select(country, country_code) |> 
+    #         filter(!is.na(country_code)) |> unique()) |> 
+    ggplot(aes(EF, Gini)) +
+    geom_segment(
+        aes(x = 0, y = 0, xend = EF, yend = Gini, color = as.factor(Group)),
+        arrow = arrow(length = unit(0.1, "cm")), show.legend = FALSE, size = 0.15) +
+    geom_text(
+        aes(x = EF *1.1, y = Gini * 1.1, label = iso3, colour = Group), 
+        size = 1, show.legend = FALSE) +
+    scale_color_manual("Groups", values = c("#73B3A3","#FEA621","#5BA4CA")) +
+    labs(x = "Ecological Footprint", y = "Inequality (Gini)") +
+    theme_light(base_size = 6) +
+    theme(panel.grid = element_blank(), legend.position = c(0.8,0.2), 
+          legend.text = element_text(size = 4), legend.title = element_text(size =4),
+          legend.key.width = unit(2,"mm"), legend.key.height = unit(2, "mm"))    
+
+
+a1
+
+f1 <- c1 + annotation_custom(
+        grob = ggplotGrob(a1),
+        xmin = 10, xmax = 18, ymin = 40, ymax = 60
+    )  
+
+# ggsave(
+#     filename = "Gini_EF.png", path = "figures/", device = "png",
+#     width = 4, height = 4, dpi = 300, bg = "white", 
+#     plot = f1
+# )
+
+# ggplotly(c1, tooltip=c("country", "EFconsPerCap", "gini", "gni_log"))
+f1
+```
+
+```{r fig.width=3, fig.height=3}
+a2 <- df_dat |> 
+    as_tibble() |> 
+    group_by(iso3) |> 
+    dplyr::summarize(
+        EF = sum(d_EF, na.rm = TRUE),
+        Gini = sum(d_gini, na.rm = TRUE),
+        GNI = sum(d_gni, na.rm = TRUE)
+    ) |> 
+    mutate(Group = as.character(stab@clusterObjs$kmeans$`3`$cluster)) |> 
+    # left_join(
+    #     dat |> select(country, country_code) |> 
+    #         filter(!is.na(country_code)) |> unique()) |> 
+    ggplot(aes(GNI, Gini)) +
+    geom_segment(
+        aes(x = 0, y = 0, xend = GNI, yend = Gini, 
+            color = as.factor(Group)), show.legend = FALSE,
+        arrow = arrow(length = unit(0.1, "cm")), size = 0.15) +
+    geom_text(aes(x = GNI * 1.1, y = Gini *1.1, 
+                  label = iso3, colour = Group), 
+              size = 1, show.legend = FALSE) +
+    scale_color_manual("Groups", values = c("#73B3A3","#FEA621","#5BA4CA")) +
+    theme_light(base_size = 6) + labs(x = "Prosperity (GNI [log])", y = "Inequality (Gini)") +
+    theme(panel.grid = element_blank(), legend.position = c(0.8,0.2),
+          legend.text = element_text(size = 4), legend.title = element_text(size = 4),
+          legend.key.width = unit(2,"mm"), legend.key.height = unit(2, "mm")) 
+
+f2 <- c2 + annotation_custom(
+        grob = ggplotGrob(a2),
+        xmin = 0.8, xmax = 2.5, ymin = 40, ymax = 62
+    ) 
+
+# ggsave(
+#     filename = "Gini_GNI.png", path = "figures/", device = "png",
+#     width = 4, height = 4, dpi = 300, bg = "white", 
+#     plot = f2
+# )
+
+```
+
+
+```{r fig.height=3, fig.width=3}
+a3 <- df_dat |> 
+    as_tibble() |> 
+    group_by(country) |> 
+    dplyr::summarize(
+        EF = sum(d_EF, na.rm = TRUE),
+        Gini = sum(d_gini, na.rm = TRUE),
+        GNI = sum(d_gni, na.rm = TRUE)
+    ) |> 
+    mutate(Group = as.character(stab@clusterObjs$kmeans$`3`$cluster)) |> 
+    left_join(
+        dat |> select(country, country_code) |> 
+            filter(!is.na(country_code)) |> unique()) |> 
+    ggplot(aes(GNI, EF)) +
+    geom_segment(
+        aes(x = 0, y = 0, xend = GNI, yend = EF, 
+            color = as.factor(Group)), show.legend = FALSE, 
+        arrow = arrow(length = unit(0.1, "cm")), size = 0.15) +
+    geom_text(aes(x = GNI * 1.1, y = EF *1.1, 
+                  label = country_code, colour = Group), 
+              size = 1, show.legend = FALSE) +
+    scale_color_manual("Groups", values = c("#73B3A3","#FEA621","#5BA4CA")) +
+    theme_light(base_size = 6) + labs(y = "Ecological footprint", x = "Prosperity (GNI)") +
+    theme(panel.grid = element_blank(), legend.position = c(0.8,0.8),
+          legend.text = element_text(size = 4), legend.title = element_text(size = 4),
+          legend.key.width = unit(2,"mm"), legend.key.height = unit(2, "mm")) 
+
+
+f3 <- c3 + annotation_custom(
+        grob = ggplotGrob(a3),
+        xmin = 0.8, xmax = 2.8, ymin = 8, ymax = 18
+    ) 
+
+# ggsave(
+#     filename = "EF_GNI.png", path = "figures/", device = "png",
+#     width = 4, height = 4, dpi = 300, bg = "white", 
+#     plot = f3
+# )
+
+```
+
+```{r}
+
+
+# ggsave(
+#     filename = "trilema_ensamble.png", device = "png", path = "figures/",
+#     width = 7.5, height = 3, bg = "white", dpi = 300,
+#     plot = f1 + labs(tag = "A") + f2 + labs(tag = "B") +  f3 + labs(tag = "C")
+# )
+```
+
+## Static
+
+```{r}
+## ecological footprint
+ef <- ecofp %>%
+  filter(record == "EFConsPerCap") %>%
+  select(countryName, isoa2, year, value) %>% 
+  dplyr::rename(EFconsPerCap = value, country = countryName) |> 
+    group_by(country, isoa2) |> 
+    dplyr::summarize(
+        m_ef = mean(EFconsPerCap, na.rm = TRUE), 
+        sd_ef = sd(EFconsPerCap, na.rm = TRUE))
+
+
+gini <- inq %>% 
+    filter(!is.na(gini_reported)) %>% 
+    select(country, isoa2 = c2, country_code = c3, year, gini_reported) %>% 
+    group_by(country, year, isoa2, country_code) %>% 
+    dplyr::summarize(gini_mean = mean(gini_reported, na.rm = TRUE)) |> 
+    ungroup() |> group_by(country, isoa2, country_code) |> 
+    dplyr::summarize(
+        m_gini = mean(gini_mean, na.rm = TRUE),
+        sd_gini = sd(gini_mean, na.rm = TRUE)
+    )
+
+
+
+gni <- dat1 %>% 
+      select(-last_col()) %>% 
+      filter(indicator_name == "GNI per capita (US$)") %>% 
+      pivot_longer(cols = x1990:x2019, names_to = "year", values_to = "value") %>%
+      mutate(year = str_remove(year, "x")) %>% 
+      mutate(year = as.numeric(year)) %>% 
+      mutate(ismissing = is.na(value)) %>% 
+      dplyr::rename(country = country_name, gni = value) |> 
+    group_by(country, country_code) |> 
+    dplyr::summarize(
+        m_gni = mean(gni, na.rm = TRUE),
+        sd_gni = sd(gni, na.rm = TRUE)
+    )
+
+df_all2 <- gini |> left_join(ef) |> left_join(gni)
+
+df_all2 <- df_all2 |> ungroup() |> 
+    filter(!is.na(sd_gini), !is.na(m_ef), !is.na(sd_ef), !is.na(m_gni), !is.na(sd_gni))
+
+save(df_all2, file = "data/trilemma_static.Rda")
+```
+
+
+```{r}
+m <- "ward.D2" # minimize the total within-cluster variance
+
+clust_num2 <- NbClust::NbClust( 
+    data = (df_all2 %>% as.data.frame() %>% 
+        select(where(is.numeric)) ),
+    #distance = "maximum",
+    min.nc = 2, max.nc = 7, 
+    method = m, 
+    index = 'all')
+```
+
+```{r warning = FALSE, message=FALSE}
+
+library(clValid)
+library(mclust)
+## Stability & Internal validation
+stab2 <- clValid::clValid(
+    obj = df_all2 %>% as.data.frame() %>% 
+        select(where(is.numeric)) %>%
+        as.matrix(),
+    nClust = 2,
+    clMethods = c(
+        "hierarchical", "kmeans",  "som", 
+        "model", "diana", "sota", "pam", "clara", "agnes"),
+    validation = c('stability', "internal"),
+    #metric = "manhattan",
+    method = "ward",
+    verbose = FALSE
+) ## Hierarchical is the optimal method
+
+clValid::optimalScores(stab)
+```
+
+```{r}
+stab2@clusterObjs$pam$`2`$clustering
+
+```
+
+```{r}
+df_all2 |> 
+    mutate(clus = stab2@clusterObjs$pam$`2`$clustering ) 
+```
+
+```{r}
+pc_all <- prcomp(df_all2 |> 
+                 select(where(is.numeric)) ,
+             center = TRUE, scale. = TRUE)
+
+
+pc2 <- ggbiplot::ggbiplot(
+    pc_all, groups = as.character(stab2@clusterObjs$pam$`2`$clustering ),
+    ellipse = TRUE, labels = df_all2$country_code, labels.size = 1,
+    varname.size = 1.5) +
+    scale_color_manual("Groups", values = c("#73B3A3","#FEA621")) +
+    labs(tag = "B") + 
+    theme_light(base_size = 5) +
+    theme(legend.position = c(0.2, 0.2), panel.grid = element_blank(),
+          legend.text = element_text(size = 5), legend.title = element_text(size = 5),
+          legend.key.width = unit(3,"mm"), legend.key.height = unit(2, "mm"))
+
+pc1 + pc2 + plot_layout(widths = 3, heights = 3)
+
+# ggsave(
+#     filename = "pca_trilemma.png", path = "figures/", device = "png",
+#     width = 6, height = 3, dpi = 300, bg = "white",
+#     plot = pc1+pc2
+# )
+```
+
+
+
+### Maps
+
+```{r}
+library(sf)
+library(spData)
+```
+
+
+```{r}
+
+
+data(world)
+
+ef_map <-  world |>
+    filter(!is.na(pop)) |> 
+    left_join(ef, by = c("iso_a2" = "isoa2")) |> 
+    ggplot() +
+    geom_sf(aes(fill = m_ef), size = 0.05, color = "white") +
+    scico::scale_fill_scico(
+        "Mean Ecological Footprint",palette = "romaO", direction = -1,
+        guide = guide_colorbar(title.position = "top")) + 
+    labs(tag = "C") +
+    theme_void(base_size = 5) +
+    theme(legend.position = "bottom", legend.key.height = unit(1, "mm"), 
+          legend.key.width = unit(5, "mm"))
+
+
+gini_map <-  world |>
+    filter(!is.na(pop)) |> 
+    left_join(gini, by = c("iso_a2" = "isoa2")) |> 
+    ggplot() +
+    geom_sf(aes(fill = m_gini), size = 0.05, color = "white") +
+    scico::scale_fill_scico(
+        "Mean Gini",palette = "berlin",
+        guide = guide_colorbar(title.position = "top")) + 
+    labs(tag = "D") +
+    theme_void(base_size = 5) +
+    theme(legend.position = "bottom", legend.key.height = unit(1, "mm"), 
+          legend.key.width = unit(5, "mm"))
+
+gni_map <-  world |>
+    left_join(gini |> dplyr::select(isoa2, country_code),  
+              by = c("iso_a2" = "isoa2") ) |> 
+    left_join(gni |> ungroup() |> select(-country)) |> 
+    filter(!is.na(pop)) |>
+    ggplot() +
+    geom_sf(aes(fill = m_gni), size = 0.05, color = "white") +
+    scico::scale_fill_scico(
+        "Mean Gross National Income",palette = "batlowW",
+        guide = guide_colorbar(title.position = "top")) + 
+    labs(tag = "E") +
+    theme_void(base_size = 5) +
+    theme(legend.position = "bottom", legend.key.height = grid::unit(1, "mm"), 
+          legend.key.width = grid::unit(5, "mm"))
+
+
+
+ef_map + gini_map + gni_map
+# 
+# ggsave(
+#     filename = "maps_trilemma.png", path = "figures/", device = "png",
+#     width = 6, height = 1.5, dpi = 400, bg = "white",
+#     plot = ef_map + gini_map + gni_map
+# )
+
+
+```
+
+```{r}
+
+ggsave(
+    filename = "pca_maps.png", path = "figures/", device = "png",
+    width = 5, height = 4, dpi = 600, bg = "white",
+    plot = (pc1 / pc2 ) | (ef_map / gini_map / gni_map) + 
+    plot_annotation(tag_levels = "A") + 
+    plot_layout(widths = c(1,4), tag_level = "new")
+)
+
+```
+
