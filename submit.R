@@ -15,3 +15,8 @@ pdf_subset("response to reviewers.pdf", pages = 2:7, output = "response_reviewer
 ## Third submission
 pdf_subset("response_letter-reviewers.pdf", pages = 1, output = "revision_231118/response_letter.pdf")
 pdf_subset("response_letter-reviewers.pdf", pages = 2:4, output = "revision_231118/response_reviewer.pdf")
+
+
+## Fourth submission
+pdf_subset("Response_Feb2024version.pdf", pages = 1, output = "revision_240225/response_letter.pdf")
+pdf_subset("Response_Feb2024version.pdf", pages = 2:4, output = "revision_240225/response_reviewer.pdf")
